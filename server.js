@@ -7,7 +7,9 @@ const ordersRoutes = require("./backend/routes/orders");
 const path = require("path");
 
 // Correct the path to the properties file based on your folder structure
-const propertiesPath = path.join(__dirname, "backend", "conf", "db.properties");
+const propertiesPath =
+  process.env.DB_PROPERTIES_PATH ||
+  path.join(__dirname, "backend", "conf", "db.properties");
 
 // Use the path with the properties reader
 const properties = PropertiesReader(propertiesPath);
