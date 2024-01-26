@@ -6,13 +6,13 @@ const lessonsRoutes = require("./backend/routes/lessons");
 const ordersRoutes = require("./backend/routes/orders");
 const path = require("path");
 
-// Construct the path to the properties file
-const propertiesPath = path.join(__dirname, "conf", "db.properties");
+// Correct the path to the properties file based on your folder structure
+const propertiesPath = path.join(__dirname, "backend", "conf", "db.properties");
 
 // Use the path with the properties reader
 const properties = PropertiesReader(propertiesPath);
 
-// Now, construct the dbUri using the properties
+// Construct the dbUri using the properties
 const dbUri = `${properties.get("db.prefix")}${properties.get(
   "db.user"
 )}:${encodeURIComponent(properties.get("db.pwd"))}@${properties.get(
@@ -27,14 +27,11 @@ const client = new MongoClient(dbUri);
 
 // Express application setup
 const app = express();
-const port = 8888;
+const port = 3000;
 
 app.use(express.json()); // Middleware to parse JSON bodies
 app.use(loggerMiddleware); // Logger middleware
-app.use("/images", express.static(path.join(__dirname, "images"))); // Static files middleware
-
-app.use("/api", lessonsRoutes); // Lessons routes
-app.use("/api", ordersRoutes); // Orders routes
+app.use("/images", express.static(path.join(__dirname, "backend", "images"))); // Corrected path for Static files middleware
 
 // Connect to MongoDB
 async function connectToDatabase() {
@@ -50,7 +47,7 @@ async function connectToDatabase() {
 
 // Middleware for MongoDB connection
 app.use(async (req, res, next) => {
-  if (!client) {
+  if (!client.isConnected()) {
     console.log("MongoDB client is not initialized. Trying to reconnect...");
     await connectToDatabase();
   }
@@ -58,14 +55,11 @@ app.use(async (req, res, next) => {
   next();
 });
 
-app.use("/images", express.static("/images"));
+// Define API routes
+app.use("/api/lessons", lessonsRoutes); // Lessons routes
+app.use("/api/orders", ordersRoutes); // Orders routes
 
-// ... after setting up the express app ...
-app.use(loggerMiddleware);
-app.use("/api", lessonsRoutes);
-app.use("/api", ordersRoutes);
-
-// Define routes
+// Define the root route
 app.get("/", (req, res) => {
   res.send("Hello World!");
 });
