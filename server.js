@@ -5,6 +5,7 @@ const loggerMiddleware = require("./backend/middlewares/logger");
 const lessonsRoutes = require("./backend/routes/lessons");
 const ordersRoutes = require("./backend/routes/orders");
 const path = require("path");
+const cors = require("cors");
 
 // Correct the path to the properties file based on your folder structure
 const propertiesPath =
@@ -29,11 +30,13 @@ const client = new MongoClient(dbUri);
 
 // Express application setup
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8080;
 
 app.use(express.json()); // Middleware to parse JSON bodies
 app.use(loggerMiddleware); // Logger middleware
-app.use("/images", express.static(path.join(__dirname, "backend", "images"))); // Corrected path for Static files middleware
+app.use("/images", express.static(path.join(__dirname, "frontend/images")));
+app.use(express.static(path.join(__dirname, "frontend")));
+app.use(cors());
 
 // Connect to MongoDB
 async function connectToDatabase() {
@@ -49,8 +52,8 @@ async function connectToDatabase() {
 
 // Middleware for MongoDB connection
 app.use(async (req, res, next) => {
-  if (!client.isConnected()) {
-    console.log("MongoDB client is not initialized. Trying to reconnect...");
+  if (!client.topology || !client.topology.isConnected()) {
+    console.log("MongoDB client is not connected. Trying to reconnect...");
     await connectToDatabase();
   }
   req.db = client.db(properties.get("db.name"));
