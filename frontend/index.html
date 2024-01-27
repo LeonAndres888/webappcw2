@@ -43,7 +43,7 @@
 
           <!-- Loop through product array -->
           <figure>
-            <img v-bind:src="product.image" alt="product.title">
+            <img :src="product.image" alt="product.title">
           </figure>
           <h2 v-text="product.title"></h2>
           <p>Location: {{product.location}}</p>

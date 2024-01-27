@@ -1,9 +1,21 @@
 const express = require("express");
 const router = express.Router();
 
-router.post("/orders", async (req, res) => {
+// GET route for fetching all orders
+router.get("/", async (req, res) => {
   const db = req.db;
-  const order = req.body; // Make sure you have body-parser middleware to parse JSON body
+  try {
+    const orders = await db.collection("orders").find({}).toArray();
+    res.json(orders);
+  } catch (error) {
+    res.status(500).send("Error fetching orders.");
+  }
+});
+
+// POST route for creating a new order
+router.post("/", async (req, res) => {
+  const db = req.db;
+  const order = req.body; // Ensure body-parser middleware is used
 
   try {
     const result = await db.collection("orders").insertOne(order);
