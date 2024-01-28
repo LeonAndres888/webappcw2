@@ -52,17 +52,12 @@ router.put("/:id", async (req, res) => {
 
     // Check if update operation modified any documents
     if (updateResult.modifiedCount === 0) {
-      // If no documents modified, perhaps the lesson doesn't exist or inventory is insufficient
-      return res
-        .status(400)
-        .send("Inventory update failed or lesson not found.");
+      // If no documents modified, send failure response
+      return res.status(400).send("Inventory update failed.");
     }
 
     // If update is successful, send success response
-    res.json({
-      message: "Lesson updated successfully.",
-      modifiedCount: updateResult.modifiedCount,
-    });
+    res.json({ message: "Lesson updated successfully." });
   } catch (error) {
     // If error, log and send error response
     console.error("Error updating lesson:", error);
