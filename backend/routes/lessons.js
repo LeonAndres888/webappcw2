@@ -2,64 +2,68 @@ const express = require("express");
 const { MongoClient, ObjectId } = require("mongodb");
 const router = express.Router();
 
-// GET route for fetching all lessons
+// GET route, fetches all lessons from database
+// Responds with an array of lesson objects in JSON
 router.get("/", async (req, res) => {
+  // Set headers to prevent caching of response
   res.set("Cache-Control", "no-store");
-  const db = req.db;
+  const db = req.db; // Acquire database connection from request object
+
   try {
+    // Fetch all documents from 'lessons' collection and convert to array
     const lessons = await db.collection("lessons").find({}).toArray();
-    res.json(lessons);
+    res.json(lessons); // Send lessons back in the response
   } catch (error) {
-    console.error("Error fetching lessons:", error); // Log error on server
+    // Log error to server console and send an error response
+    console.error("Error fetching lessons:", error);
     res.status(500).send("Error fetching lessons.");
   }
 });
 
-// PUT route for updating a specific lesson's available space
+// PUT route for updating available space in a lesson
+// Decreases availableInventory by the number provided in the request body
 router.put("/:id", async (req, res) => {
-  const db = req.db;
-  const lessonId = req.params.id;
+  const db = req.db; // Acquire database connection from request object
+  const lessonId = req.params.id; // Get lesson ID from URL parameters
+  const numberToDecrease = parseInt(req.body.numberToDecrease, 10); // Parse the decrease number from request body
 
-  // Validate lessonId is a valid ObjectId
+  // Validate the provided lesson ID
   if (!ObjectId.isValid(lessonId)) {
     return res.status(400).send("Invalid lesson ID format.");
   }
 
-  const objectId = new ObjectId(lessonId); // Convert to ObjectId
-  const numberToDecrease = parseInt(req.body.numberToDecrease, 10); // Ensure it's an integer
+  // Validate number to decrease is a positive integer
+  if (isNaN(numberToDecrease) || numberToDecrease <= 0) {
+    return res
+      .status(400)
+      .send("Number to decrease must be a positive integer.");
+  }
 
-  // Log the update details to the console
-  console.log(
-    "Updating lesson with ID:",
-    lessonId,
-    "to decrease spaces by:",
-    numberToDecrease
-  );
-
-  // Perform the update
   try {
-    const update = { $inc: { availableInventory: -numberToDecrease } };
-    const result = await db
+    // Create an ObjectId instance for lessonId
+    const objectId = new ObjectId(lessonId);
+    // Attempt to update specified lesson's availableInventory
+    const updateResult = await db
       .collection("lessons")
-      .updateOne({ _id: objectId }, update);
+      .updateOne(
+        { _id: objectId, availableInventory: { $gte: numberToDecrease } },
+        { $inc: { availableInventory: -numberToDecrease } }
+      );
 
-    if (result.matchedCount === 0) {
-      return res.status(404).send("Lesson not found.");
+    // Check if update operation modified any documents
+    if (updateResult.modifiedCount === 0) {
+      // If no documents modified, send failure response
+      return res.status(400).send("Inventory update failed.");
     }
 
-    if (result.modifiedCount === 0) {
-      return res
-        .status(400)
-        .send(
-          "No update made. It's possible the number to decrease was not a positive number or exceeded the available inventory."
-        );
-    }
-
+    // If update is successful, send success response
     res.json({ message: "Lesson updated successfully." });
   } catch (error) {
-    console.error(`Error updating lesson space: ${error}`);
+    // If error, log and send error response
+    console.error("Error updating lesson:", error);
     res.status(500).send("Error updating lesson space.");
   }
 });
 
+// Export router for use in the main server file
 module.exports = router;
