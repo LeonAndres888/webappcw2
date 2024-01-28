@@ -19,6 +19,35 @@ router.get("/", async (req, res) => {
     res.status(500).send("Error fetching lessons.");
   }
 });
+// GET route for single lesson by ID
+router.get("/:id", async (req, res) => {
+  const db = req.db; // Get database connection from request object
+  const lessonId = req.params.id; // Get lesson ID from URL parameters
+
+  // Validate provided lesson ID
+  if (!ObjectId.isValid(lessonId)) {
+    return res.status(400).send("Invalid lesson ID format.");
+  }
+
+  try {
+    // Create ObjectId instance for lessonId
+    const objectId = new ObjectId(lessonId);
+    // Fetch document from 'lessons' collection that matches ID
+    const lesson = await db.collection("lessons").findOne({ _id: objectId });
+
+    // If no lesson is found send 404 Not Found response
+    if (!lesson) {
+      return res.status(404).send("Lesson not found.");
+    }
+
+    // Send lesson back in response
+    res.json(lesson);
+  } catch (error) {
+    // Log error to server console and send an error response
+    console.error("Error fetching lesson by ID:", error);
+    res.status(500).send("Error fetching lesson by ID.");
+  }
+});
 
 // PUT route for updating available space in a lesson
 // Decreases availableInventory by the number provided in the request body
