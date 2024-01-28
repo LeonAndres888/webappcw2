@@ -7,71 +7,72 @@ const ordersRoutes = require("./backend/routes/orders");
 const path = require("path");
 const cors = require("cors");
 
-// Correct the path to the properties file based on your folder structure
+// Load database properties from file or environment variable
 const propertiesPath =
   process.env.DB_PROPERTIES_PATH ||
   path.join(__dirname, "backend", "conf", "db.properties");
-
-// Use the path with the properties reader
 const properties = PropertiesReader(propertiesPath);
 
-// Construct the dbUri using the properties
+// Construct MongoDB URI using properties file credentials
 const dbUri = `${properties.get("db.prefix")}${properties.get(
   "db.user"
 )}:${encodeURIComponent(properties.get("db.pwd"))}@${properties.get(
   "db.url"
 )}/${properties.get("db.name")}${properties.get("db.params")}`;
 
-// Ensure dbUri is logged after it's defined
-console.log(dbUri);
-
-// MongoDB client
+// Initialize MongoDB client
 const client = new MongoClient(dbUri);
 
-// Express application setup
+// Initialize Express application
 const app = express();
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 8080; // Set server port
 
-app.use(express.json()); // Middleware to parse JSON bodies
-app.use(loggerMiddleware); // Logger middleware
-app.use("/images", express.static(path.join(__dirname, "frontend/images")));
-app.use(express.static(path.join(__dirname, "frontend")));
-app.use(cors());
+// Configure CORS options to allow requests from github origin
+const corsOptions = {
+  origin: "https://leonandres888.github.io/webappcw1/",
+  optionsSuccessStatus: 200, // For legacy browser support
+};
+
+app.use(cors(corsOptions)); // Enable CORS with specified options
+app.use(express.json()); // Parse JSON request bodies
+app.use(loggerMiddleware); // Use logger middleware for request logging
 
 // Connect to MongoDB
+// Establish connection to MongoDB Atlas and return database instance.
 async function connectToDatabase() {
   try {
     await client.connect();
     console.log("Connected to MongoDB Atlas");
-    return client.db(properties.get("db.name")); // returns the specific database instance
+    return client.db(properties.get("db.name")); // Return database instance
   } catch (error) {
     console.error("Connection to MongoDB Atlas failed!", error);
-    process.exit(1);
+    process.exit(1); // Exit process if connection fails
   }
 }
 
-// Middleware for MongoDB connection
+// Middleware to ensure MongoDB connection is working
+// Reconnects to MongoDB if client is disconnected and attaches db instance to request
+
 app.use(async (req, res, next) => {
   if (!client.topology || !client.topology.isConnected()) {
     console.log("MongoDB client is not connected. Trying to reconnect...");
     await connectToDatabase();
   }
-  req.db = client.db(properties.get("db.name"));
-  next();
+  req.db = client.db(properties.get("db.name")); // Attach db instance to request
+  next(); // Continue to next middleware
 });
 
-// Define API routes
-app.use("/api/lessons", lessonsRoutes); // Lessons routes
-app.use("/api/orders", ordersRoutes); // Orders routes
+// Register API route handlers
+app.use("/api/lessons", lessonsRoutes); // Use lessons routes for '/api/lessons' path
+app.use("/api/orders", ordersRoutes); // Use orders routes for '/api/orders' path
 
+// Middleware to prevent response caching
 app.use((req, res, next) => {
   res.set("Cache-Control", "no-store");
   next();
 });
 
-// Start the server
-app.listen(port, async () => {
+// Start the Express server
+app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
-  // Connect to the database when the server starts
-  await connectToDatabase();
 });
