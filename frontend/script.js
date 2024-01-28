@@ -25,6 +25,9 @@ const webstore = new Vue({
         );
       });
     },
+    cartItemCount() {
+      return this.cart.reduce((total, item) => total + item.quantity, 0);
+    },
     validCheckout() {
       const nameRegex = /^[A-Za-z\s]+$/;
       const phoneRegex = /^[0-9()-]+$/;
@@ -53,21 +56,22 @@ const webstore = new Vue({
         .then((data) => {
           this.products = data;
         })
-
         .catch((error) => {
           console.error("Error fetching lessons:", error);
         });
     },
     submitOrder() {
-      // Submit order to the backend and update lesson space
       const order = {
         name: this.custName,
         phoneNumber: this.custPhone,
         items: this.cart.map((item) => ({
-          lessonId: item.id,
-          quantity: item.quantity, // Now dynamic based on cart item quantity
+          lessonId: item._id,
+          quantity: item.quantity,
         })),
       };
+
+      // Log order items to the console before submitting
+      console.log("Order items before submitting:", order.items);
 
       fetch("http://localhost:8080/api/orders", {
         method: "POST",
@@ -76,54 +80,81 @@ const webstore = new Vue({
         },
         body: JSON.stringify(order),
       })
-        .then((response) => response.json())
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
         .then((data) => {
           this.orderSubmitted = true;
           console.log("Order submitted:", data);
-          this.updateLessonSpace(order.items);
+          // Call updateLessonSpaces with a new parameter to indicate order submission
+          return this.updateLessonSpaces(order.items, true);
+        })
+        .then(() => {
+          // Re-fetch lessons to update the local state with new data from the server
+          this.fetchLessons();
         })
         .catch((error) => {
           console.error("Error submitting order:", error);
         });
     },
-    updateLessonSpace(orderedItems) {
-      orderedItems.forEach((item) => {
-        fetch(`http://localhost:8080/api/lessons/${item.lessonId}`, {
+
+    updateLessonSpaces(orderedItems, isOrderSubmitted = false) {
+      if (!isOrderSubmitted) {
+        return Promise.resolve();
+      }
+
+      const updatePromises = orderedItems.map((item) => {
+        return fetch(`http://localhost:8080/api/lessons/${item.lessonId}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ numberToDecrease: item.quantity }),
-        })
-          .then((response) => {
-            if (response.ok) {
-              console.log(
-                `Lesson space updated for lesson ID ${item.lessonId}`
-              );
-            } else {
-              console.error(
-                `Failed to update lesson space for lesson ID ${item.lessonId}`
-              );
-            }
-          })
-          .catch((error) => {
-            console.error("Error updating lesson space:", error);
-          });
+        }).then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        });
       });
+
+      return Promise.all(updatePromises)
+        .then(() => {
+          this.fetchLessons(); // Fetch the updated lessons data
+        })
+        .catch((error) => {
+          console.error("Error updating lessons:", error);
+        });
     },
+
     canAddToCart(product) {
       // Check if product can be added to cart
       let cartItem = this.cart.find((item) => item.id === product.id);
       let cartItemCount = cartItem ? cartItem.quantity : 0;
       return product.availableInventory > cartItemCount;
     },
-    addItemCart(product) {
-      // Add product and decrease inventory by 1
-      if (product.availableInventory > 0) {
-        this.cart.push(product);
-        product.availableInventory--;
+    addItemCart(lesson) {
+      // Check if the lesson can be added to the cart based on available inventory
+      if (lesson.availableInventory <= 0) {
+        alert("This lesson is fully booked.");
+        return; // Exit the function if no inventory
+      }
+
+      // Decrease the available inventory by 1
+      lesson.availableInventory--;
+
+      // Add the lesson to the cart
+      let cartItem = this.cart.find((item) => item.id === lesson.id);
+      if (cartItem) {
+        cartItem.quantity++;
+      } else {
+        this.cart.push({ ...lesson, quantity: 1 });
       }
     },
+
     updateSortOrder(order) {
       // Update sorting order based on asc or dsc buttons
       this.sortOrder = order;
@@ -138,6 +169,11 @@ const webstore = new Vue({
           cartItem.quantity--;
         } else {
           this.cart.splice(cartItemIndex, 1);
+        }
+        // Increase the available inventory by 1
+        let lesson = this.products.find((lesson) => lesson.id === item.id);
+        if (lesson) {
+          lesson.availableInventory++;
         }
       }
     },

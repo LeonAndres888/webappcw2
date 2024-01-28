@@ -64,9 +64,9 @@ app.use(async (req, res, next) => {
 app.use("/api/lessons", lessonsRoutes); // Lessons routes
 app.use("/api/orders", ordersRoutes); // Orders routes
 
-// Define the root route
-app.get("/", (req, res) => {
-  res.send("Hello World!");
+app.use((req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
 });
 
 // Start the server
