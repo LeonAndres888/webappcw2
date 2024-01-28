@@ -69,7 +69,7 @@ router.put("/:id", async (req, res) => {
   }
 
   try {
-    // Create an ObjectId instance for lessonId
+    // Create ObjectId instance for lessonId
     const objectId = new ObjectId(lessonId);
     // Attempt to update specified lesson's availableInventory
     const updateResult = await db
@@ -79,16 +79,13 @@ router.put("/:id", async (req, res) => {
         { $inc: { availableInventory: -numberToDecrease } }
       );
 
-    // Check if update operation modified any documents
-    if (updateResult.modifiedCount === 0) {
-      // If no documents modified, send failure response
-      return res.status(400).send("Inventory update failed.");
-    }
-
-    // If update is successful, send success response
-    res.json({ message: "Lesson updated successfully." });
+    // Include modifiedCount in success response
+    res.json({
+      message: "Lesson updated successfully.",
+      modifiedCount: updateResult.modifiedCount, // Include modifiedCount in response
+    });
   } catch (error) {
-    // If error, log and send error response
+    // If there is an error, log and send error response
     console.error("Error updating lesson:", error);
     res.status(500).send("Error updating lesson space.");
   }
