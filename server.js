@@ -29,7 +29,7 @@ const port = process.env.PORT || 8080; // Set server port
 
 // Configure CORS options to allow requests from github origin
 const corsOptions = {
-  origin: "https://leonandres888.github.io/webappcw1/",
+  origin: "https://leonandres888.github.io",
   optionsSuccessStatus: 200, // For legacy browser support
 };
 
