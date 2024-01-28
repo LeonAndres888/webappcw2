@@ -15,6 +15,7 @@ router.get("/", async (req, res) => {
   }
 });
 
+// PUT route for updating a specific lesson's available space
 router.put("/:id", async (req, res) => {
   const db = req.db;
   const lessonId = req.params.id;
@@ -27,29 +28,24 @@ router.put("/:id", async (req, res) => {
   const objectId = new ObjectId(lessonId); // Convert to ObjectId
   const numberToDecrease = parseInt(req.body.numberToDecrease, 10); // Ensure it's an integer
 
-  // Check that numberToDecrease is 1
-  if (numberToDecrease !== 1) {
-    return res.status(400).send("Number to decrease must be 1.");
-  }
+  // Log the update details to the console
+  console.log(
+    "Updating lesson with ID:",
+    lessonId,
+    "to decrease spaces by:",
+    numberToDecrease
+  );
 
+  // Perform the update
   try {
-    // Check the current inventory before decrementing
-    const currentLesson = await db
-      .collection("lessons")
-      .findOne({ _id: objectId });
-    if (!currentLesson) {
-      return res.status(404).send("Lesson not found.");
-    }
-
-    if (currentLesson.availableInventory < numberToDecrease) {
-      return res.status(400).send("Not enough spaces available to decrease.");
-    }
-
-    // Proceed with the update if the check passes
     const update = { $inc: { availableInventory: -numberToDecrease } };
     const result = await db
       .collection("lessons")
       .updateOne({ _id: objectId }, update);
+
+    if (result.matchedCount === 0) {
+      return res.status(404).send("Lesson not found.");
+    }
 
     if (result.modifiedCount === 0) {
       return res
