@@ -18,31 +18,50 @@ router.get("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   const db = req.db;
   const lessonId = req.params.id;
-  const numberToDecrease = parseInt(req.body.numberToDecrease, 10);
 
+  // Validate lessonId is a valid ObjectId
   if (!ObjectId.isValid(lessonId)) {
     return res.status(400).send("Invalid lesson ID format.");
   }
-  if (isNaN(numberToDecrease) || numberToDecrease <= 0) {
-    return res
-      .status(400)
-      .send("Number to decrease must be a positive integer.");
+
+  const objectId = new ObjectId(lessonId); // Convert to ObjectId
+  const numberToDecrease = parseInt(req.body.numberToDecrease, 10); // Ensure it's an integer
+
+  // Check that numberToDecrease is 1
+  if (numberToDecrease !== 1) {
+    return res.status(400).send("Number to decrease must be 1.");
   }
 
   try {
-    const objectId = new ObjectId(lessonId);
-    const updateResult = await db
+    // Check the current inventory before decrementing
+    const currentLesson = await db
       .collection("lessons")
-      .updateOne(
-        { _id: objectId, availableInventory: { $gte: numberToDecrease } },
-        { $inc: { availableInventory: -numberToDecrease } }
-      );
-
-    if (updateResult.modifiedCount === 0) {
-      return res.status(400).send("Inventory update failed.");
+      .findOne({ _id: objectId });
+    if (!currentLesson) {
+      return res.status(404).send("Lesson not found.");
     }
+
+    if (currentLesson.availableInventory < numberToDecrease) {
+      return res.status(400).send("Not enough spaces available to decrease.");
+    }
+
+    // Proceed with the update if the check passes
+    const update = { $inc: { availableInventory: -numberToDecrease } };
+    const result = await db
+      .collection("lessons")
+      .updateOne({ _id: objectId }, update);
+
+    if (result.modifiedCount === 0) {
+      return res
+        .status(400)
+        .send(
+          "No update made. It's possible the number to decrease was not a positive number or exceeded the available inventory."
+        );
+    }
+
     res.json({ message: "Lesson updated successfully." });
   } catch (error) {
+    console.error(`Error updating lesson space: ${error}`);
     res.status(500).send("Error updating lesson space.");
   }
 });
