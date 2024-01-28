@@ -51,6 +51,7 @@ router.get("/:id", async (req, res) => {
 
 // PUT route for updating available space in a lesson
 // Decreases availableInventory by the number provided in the request body
+// PUT route for updating available space in a lesson
 router.put("/:id", async (req, res) => {
   const db = req.db; // Acquire database connection from request object
   const lessonId = req.params.id; // Get lesson ID from URL parameters
@@ -71,7 +72,8 @@ router.put("/:id", async (req, res) => {
   try {
     // Create an ObjectId instance for lessonId
     const objectId = new ObjectId(lessonId);
-    // Attempt to update specified lesson's availableInventory
+
+    // Attempt to update specified lesson's availableInventory only if it's enough
     const updateResult = await db
       .collection("lessons")
       .updateOne(
@@ -82,7 +84,9 @@ router.put("/:id", async (req, res) => {
     // Check if update operation modified any documents
     if (updateResult.modifiedCount === 0) {
       // If no documents modified, send failure response
-      return res.status(400).send("Inventory update failed.");
+      return res
+        .status(400)
+        .send("Inventory update failed or insufficient inventory.");
     }
 
     // If update is successful, send success response
