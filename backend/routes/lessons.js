@@ -12,7 +12,7 @@ router.get("/", async (req, res) => {
   try {
     // Fetch all documents from 'lessons' collection and convert to array
     const lessons = await db.collection("lessons").find({}).toArray();
-    res.json(lessons); // Send lessons back in the response
+    res.json(lessons); // Send lessons back in the response as JSON
   } catch (error) {
     // Log error to server console and send an error response
     console.error("Error fetching lessons:", error);
@@ -74,12 +74,10 @@ router.put("/:id", async (req, res) => {
     const objectId = new ObjectId(lessonId);
 
     // Attempt to update specified lesson's availableInventory only if it's enough
-    const updateResult = await db
-      .collection("lessons")
-      .updateOne(
-        { _id: objectId, availableInventory: { $gte: numberToDecrease } },
-        { $inc: { availableInventory: -numberToDecrease } }
-      );
+    const updateResult = await db.collection("lessons").updateOne(
+      { _id: objectId, availableInventory: { $gte: numberToDecrease } },
+      { $inc: { availableInventory: -numberToDecrease } } // $inc is used to decrease
+    );
 
     // Check if update operation modified any documents
     if (updateResult.modifiedCount === 0) {
